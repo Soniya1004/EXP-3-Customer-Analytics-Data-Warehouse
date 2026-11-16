@@ -1,0 +1,120 @@
+                "Minimum": df[selected_cols].min(),
+                "Maximum": df[selected_cols].max(),
+                "Range": df[selected_cols].max() - df[selected_cols].min(),
+                "IQR": df[selected_cols].quantile(0.75)
+                - df[selected_cols].quantile(0.25),
+            }
+        )
+        print("Measures of Dispersion:")
+        show_table(dispersion)
+    else:
+        print("No matching numerical attributes were found for dispersion analysis.")
+
+    # Step 4: Correlation Between Attributes
+    print("\nSTEP 4: CORRELATION BETWEEN ATTRIBUTES")
+    corr_cols = [col for col in CORRELATION_COLUMNS if col in df.columns]
+    correlation_matrix = df[corr_cols].corr(numeric_only=True)
+    print("Correlation Matrix:")
+    show_table(correlation_matrix)
+
+    # Step 5: Data Visualization
+    print("\nSTEP 5: DATA VISUALIZATION")
+    sns.set_theme(style="whitegrid")
+
+    # Visualization 1: Histogram of customer age
+    plt.figure(figsize=(7, 4))
+    plt.hist(df["Age"].dropna(), bins=20, edgecolor="black")
+    plt.title("Distribution of Customer Age")
+    plt.xlabel("Age")
+    plt.ylabel("Number of Customers")
+    plt.tight_layout()
+    plt.savefig(output_dir / "01_customer_age_histogram.png", dpi=160)
+    if show_plots:
+        plt.show()
+    plt.close()
+
+    # Visualization 2: Boxplot of balance by churn status
+    plt.figure(figsize=(7, 4))
+    sns.boxplot(data=df, x="Exited", y="Balance", color="white")
+    plt.title("Account Balance by Customer Churn Status")
+    plt.xlabel("Exited (0 = Stayed, 1 = Left)")
+    plt.ylabel("Balance")
+    plt.tight_layout()
+    plt.savefig(output_dir / "02_balance_by_churn_boxplot.png", dpi=160)
+    if show_plots:
+        plt.show()
+    plt.close()
+
+    # Visualization 3: Correlation heatmap
+    if not correlation_matrix.empty:
+        plt.figure(figsize=(9, 6))
+        sns.heatmap(correlation_matrix, annot=True, fmt=".2f", cmap="Greys", linewidths=0.5)
+        plt.title("Correlation Heatmap of Customer Attributes")
+        plt.tight_layout()
+        plt.savefig(output_dir / "03_customer_attribute_correlation_heatmap.png", dpi=160)
+        if show_plots:
+            plt.show()
+        plt.close()
+
+    # Visualization 4: Scatter plot of age vs balance
+    plt.figure(figsize=(7, 4))
+    sns.scatterplot(data=df, x="Age", y="Balance", hue="Exited", alpha=0.6)
+    plt.title("Customer Age vs Account Balance")
+    plt.xlabel("Age")
+    plt.ylabel("Balance")
+    plt.tight_layout()
+    plt.savefig(output_dir / "04_customer_age_vs_balance_scatter.png", dpi=160)
+    if show_plots:
+        plt.show()
+    plt.close()
+
+    # Step 6: Customer Churn Summary (Optional)
+    print("\nSTEP 6: CUSTOMER CHURN SUMMARY")
+    print("Customer Churn Count:")
+    show_table(df["Exited"].value_counts().sort_index())
+    print("\nCustomer Churn Percentage:")
+    churn_percent = (df["Exited"].value_counts(normalize=True).sort_index() * 100).round(2)
+    show_table(churn_percent)
+
+    print("\nEDA completed successfully.")
+    print(f"Charts saved in: {output_dir.resolve()}")
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Run Experiment 3 EDA for the Customer Analytics Data Warehouse."
+    )
+    parser.add_argument(
+        "--csv",
+        default="Churn_Modelling.csv",
+        help="Path to the customer dataset CSV (default: Churn_Modelling.csv).",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default="eda_outputs",
+        help="Directory for generated charts (default: eda_outputs).",
+    )
+    parser.add_argument(
+        "--no-show",
+        action="store_true",
+        help="Save charts without opening plot windows.",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        df = load_dataset(Path(args.csv))
+        run_eda(df, Path(args.output_dir), show_plots=not args.no_show)
+    except (FileNotFoundError, ValueError, pd.errors.ParserError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:  # Preserve a useful error message for unexpected runtime issues.
+        print(f"Unexpected error: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
